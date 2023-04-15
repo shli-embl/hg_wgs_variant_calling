@@ -8,6 +8,7 @@ wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz inputs/f
 
 ### Download vcf files for human known variants
 Visit https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
+
 Download files into inputs/vcf/ folder:
 1000G_omni2.5.hg38.vcf.gz
 1000G_omni2.5.hg38.vcf.gz.tbi
