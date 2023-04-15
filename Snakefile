@@ -46,6 +46,7 @@ onstart:
     print("##### Creating profile pipeline #####\n") 
     print("\t Creating jobs output subfolders...\n")
     shell("mkdir -p jobs/all")
+    shell("mkdir -p jobs/indexgenome")
     shell("mkdir -p jobs/cutadapt")
     shell("mkdir -p jobs/bwamem")
     shell("mkdir -p jobs/sortbam")
@@ -64,6 +65,15 @@ onstart:
 rule all:
     input:
         expand(RESULTDIR + "/vcf/{targetfile}", targetfile=config["targetfiles"].split(","))
+
+rule indexgenome:
+    input:
+        config["genome"]
+    output:
+        config["genome"] + ".bwt"
+    threads: 1
+    shell:
+        "bwa index {input}"
 
 rule cutadapt:
     input:
@@ -87,6 +97,7 @@ rule bwamem:
         read1 = TMPDIR + "/" + "{sample}.part{subfile}.r1.fastq",
         read2 = TMPDIR + "/" + "{sample}.part{subfile}.r2.fastq",
         genome = config["genome"]
+        index = config["genome"] + ".bwt" 
     output:
         temp(TMPDIR + "/" + "{sample}.part{subfile,[0-9]}.bam")
     threads: 8
