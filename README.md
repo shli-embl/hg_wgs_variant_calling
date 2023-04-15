@@ -2,15 +2,15 @@
 Variant calling pipeline for identifying gremline and somatic mutations in patient genomes. 
 
 ## Preparations 
-### Download human reference genome
+### 1. Download human reference genome
 cd hg_wgs_variant_calling
 
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz inputs/fasta/ & unzip inputs/hg38.fa.gz
 
-### Download vcf files for human known variants
-#### Visit https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
+### 2. Download vcf files for human known variants
+#### a. Visit https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
 
-#### Download files into inputs/vcf/ folder:
+#### b. Download files into inputs/vcf/ folder:
 
 1000G_omni2.5.hg38.vcf.gz
   
@@ -41,7 +41,7 @@ hapmap_3.3.hg38.vcf.gz
 hapmap_3.3.hg38.vcf.gz.tbi
 
 
-### install conda environment
+### 3. Install conda environment
 conda env create -f envs/environment.yaml -p envs/smake_wgs
 
 conda activate envs/smake_wgs
