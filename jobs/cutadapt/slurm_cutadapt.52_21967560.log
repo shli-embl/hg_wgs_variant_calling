@@ -1,0 +1,18 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=20000, disk_mb=81208
+Select jobs to execute...
+
+[Sat Apr 15 17:45:49 2023]
+rule cutadapt:
+    input: /g/steinmetz/shli/data/human_WGS/batch2/GN_5/GN_5_CKDL200169930-1a_HNN3NDSXY_L1_1.fq.gz, /g/steinmetz/shli/data/human_WGS/batch2/GN_5/GN_5_CKDL200169930-1a_HNN3NDSXY_L1_2.fq.gz
+    output: /scratch/shli/wgs_pipeline2/p2p.part1.r1.fastq, /scratch/shli/wgs_pipeline2/p2p.part1.r2.fastq
+    jobid: 0
+    reason: Forced execution
+    wildcards: sample=p2p, subfile=1
+    threads: 8
+    resources: mem_mb=20000, disk_mb=81208, tmpdir=/scratch/jobs/21967560, runtime=24:00:00
+
+cutadapt -g AGATGTGTATAAGAGACAG -G AGATGTGTATAAGAGACAG -a CTGTCTCTTATACACATCT -A CTGTCTCTTATACACATCT -g TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG -G TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG -a CTGTCTCTTATACACATCTGACGCTGCCGACGA -A CTGTCTCTTATACACATCTGACGCTGCCGACGA -g GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAG -G GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAG -a CTGTCTCTTATACACATCTCCGAGCCCACGAGAC -A CTGTCTCTTATACACATCTCCGAGCCCACGAGAC -j 8 -o /scratch/shli/wgs_pipeline2/p2p.part1.r1.fastq -p /scratch/shli/wgs_pipeline2/p2p.part1.r2.fastq -q 20 --trim-n -m 20 --max-n=0 /g/steinmetz/shli/data/human_WGS/batch2/GN_5/GN_5_CKDL200169930-1a_HNN3NDSXY_L1_1.fq.gz /g/steinmetz/shli/data/human_WGS/batch2/GN_5/GN_5_CKDL200169930-1a_HNN3NDSXY_L1_2.fq.gz

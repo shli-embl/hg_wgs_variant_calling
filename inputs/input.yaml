@@ -1,0 +1,9 @@
+---
+samplesheet: 'inputs/samples.txt'
+genome: 'inputs/fasta/hg38.ucsc.fa'
+tmp_dir: '/scratch/shli/wgs_pipeline2'
+result_dir: '/scratch/shli/hg_wgs_calling'
+knownvcfsBQSR: 'inputs/vcf/Homo_sapiens_assembly38.dbsnp138.vcf.gz;inputs/vcf/Homo_sapiens_assembly38.known_indels.vcf.gz;inputs/vcf/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz'
+paramsVQSRindel: '-resource:mills,known=false,training=true,truth=true,prior=12 inputs/vcf/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz;-resource:axiomPoly,known=false,training=true,truth=false,prior=10 inputs/vcf/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz,-resource:dbsnp,known=true,training=false,truth=false,prior=2 inputs/vcf/Homo_sapiens_assembly38.dbsnp138.vcf.gz'
+paramsVQSRsnp: '-resource:hapmap,known=false,training=true,truth=true,prior=15 inputs/vcf/hapmap_3.3.hg38.vcf.gz;-resource:omni,known=false,training=true,truth=true,prior=12 inputs/vcf/1000G_omni2.5.hg38.vcf.gz;-resource:1000g,known=false,training=true,truth=false,prior=10 inputs/vcf/1000G_phase1.snps.high_confidence.hg38.vcf.gz;-resource:dbsnp,known=true,training=false,truth=false,prior=7 inputs/vcf/Homo_sapiens_assembly38.dbsnp138.vcf.gz'
+targetfiles: 'p1f.p1p.p1s.p2f.p2p.p2s.p3f.p3p1.p3s1.p3p2.p3s2.HC.joint.fil.vcf,p1f.p1p.p1s.MT.joint.fil.vcf,p2f.p2p.p2s.MT.joint.fil.vcf,p3f.p3p1.p3s1.p3p2.p3s2.MT.joint.fil.vcf,p1f.LF.fil.vcf,p1p.LF.fil.vcf,p1s.LF.fil.vcf,p2f.LF.fil.vcf,p2p.LF.fil.vcf,p2s.LF.fil.vcf,p3f.LF.fil.vcf,p3p1.LF.fil.vcf,p3s1.LF.fil.vcf,p3p2.LF.fil.vcf,p3s2.LF.fil.vcf,p1f.SC.fil.vcf,p1p.SC.fil.vcf,p1s.SC.fil.vcf,p2f.SC.fil.vcf,p2p.SC.fil.vcf,p2s.SC.fil.vcf,p3f.SC.fil.vcf,p3p1.SC.fil.vcf,p3s1.SC.fil.vcf,p3p2.SC.fil.vcf,p3s2.SC.fil.vcf'
