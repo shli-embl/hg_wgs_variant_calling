@@ -96,8 +96,8 @@ rule bwamem:
     input:
         read1 = TMPDIR + "/" + "{sample}.part{subfile}.r1.fastq",
         read2 = TMPDIR + "/" + "{sample}.part{subfile}.r2.fastq",
-        genome = config["genome"]
-        index = config["genome"] + ".bwt" 
+        genome = config["genome"],
+        index = config["genome"] + ".bwt"
     output:
         temp(TMPDIR + "/" + "{sample}.part{subfile,[0-9]}.bam")
     threads: 8
