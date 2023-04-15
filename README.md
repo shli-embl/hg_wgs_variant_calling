@@ -8,12 +8,11 @@ cd hg_wgs_variant_calling
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz inputs/fasta/ & unzip inputs/hg38.fa.gz
 
 ### Download vcf files for human known variants
-Visit https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
+1. Visit https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38/v0;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
 
-Download files into inputs/vcf/ folder:
+2. Download files into inputs/vcf/ folder:
 
   1000G_omni2.5.hg38.vcf.gz
-
   1000G_omni2.5.hg38.vcf.gz.tbi
 
   1000G_phase1.snps.high_confidence.hg38.vcf.gz
