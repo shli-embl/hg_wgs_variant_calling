@@ -12,10 +12,11 @@ wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz inputs/f
 
 2. Download files into inputs/vcf/ folder:
 
-  1000G_omni2.5.hg38.vcf.gz
-  1000G_omni2.5.hg38.vcf.gz.tbi
+1000G_omni2.5.hg38.vcf.gz
+  
+1000G_omni2.5.hg38.vcf.gz.tbi
 
-  1000G_phase1.snps.high_confidence.hg38.vcf.gz
+1000G_phase1.snps.high_confidence.hg38.vcf.gz
 
 1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi
 
@@ -61,7 +62,7 @@ nohup snakemake --profile profile &
 ## Custom script for calculating edit distance between variant site and gRNA
 The custom script "off_target.pl" takes and input file containing a list of variants (eg. called from the pipeline above). The input file should contain 5 columns: 1. chromosome id; 2. variant start position; 3. variant end position; 4. reference allele; 5. alternative allele. 
 
-Example input file: 
+1. Example input file: 
 
 Chr	Start	End	Ref	Alt
 
@@ -70,6 +71,6 @@ chr1	148542190	148542190	G	T
 chr9	41098700	41098700	T	C
 
 
-To get the edit distance of each variant to the gRNA sequence, Run:
+2. To get the edit distance of each variant to the gRNA sequence, Run:
 
 ./off_target_search/off_target.pl -in off_target_search/example.input.txt -out off_target_search/example.output.txt -genome inputs/fasta/hg38.fa -seq ACTCACGGTGGATCCCGCTG
