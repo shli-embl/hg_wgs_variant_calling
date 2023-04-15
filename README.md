@@ -12,11 +12,11 @@ Visit https://console.cloud.google.com/storage/browser/genomics-public-data/reso
 
 Download files into inputs/vcf/ folder:
 
-1000G_omni2.5.hg38.vcf.gz
+  1000G_omni2.5.hg38.vcf.gz
 
-1000G_omni2.5.hg38.vcf.gz.tbi
+  1000G_omni2.5.hg38.vcf.gz.tbi
 
-1000G_phase1.snps.high_confidence.hg38.vcf.gz
+  1000G_phase1.snps.high_confidence.hg38.vcf.gz
 
 1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi
 
