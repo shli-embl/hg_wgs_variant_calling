@@ -42,6 +42,11 @@ def get_chr_vcfgzs(wildcards):
 def get_chr_len(wildcards):
     return glen.loc[wildcards.chr,"len"]
 
+def rchop(s, suffix):
+    if suffix and s.endswith(suffix):
+        return s[:-len(suffix)]
+    return s
+
 onstart:
     print("##### Creating profile pipeline #####\n") 
     print("\t Creating jobs output subfolders...\n")
@@ -51,7 +56,9 @@ onstart:
     shell("mkdir -p jobs/bwamem")
     shell("mkdir -p jobs/sortbam")
     shell("mkdir -p jobs/markduplicate")
-    shell("mkdir -p jobs/indexbam")
+    shell("mkdir -p jobs/indexbam_result")
+    shell("mkdir -p jobs/indexbam_temp")
+    shell("mkdir -p jobs/indexfasta")
     shell("mkdir -p jobs/BQSR")
     shell("mkdir -p jobs/HaplotypeCaller")
     shell("mkdir -p jobs/JointGenotyping")
@@ -110,8 +117,10 @@ rule sortbam:
     output:
         temp(TMPDIR + "/" + "{sample}.part{subfile,[0-9]}.sort.bam")
     threads: 1
+    params:
+        TMPDIR
     shell:
-        "gatk SortSam -I {input} -O {output} -SO coordinate --VALIDATION_STRINGENCY SILENT"
+        "gatk SortSam -I {input} -O {output} -SO coordinate --VALIDATION_STRINGENCY SILENT --TMPDIR {params}"
 
 rule markduplicate:
     input:
@@ -120,30 +129,53 @@ rule markduplicate:
         temp(TMPDIR + "/" + "{sample}.sort.dedup.bam")
     threads: 1
     params:
-        expand(" -I {inputs} ",inputs = get_bam)
+        input = lambda wildcards: " ".join(expand(" -I {inputs} ",inputs = get_bam(wildcards))),
+        tmpdir = TMPDIR
     shell:
-        "gatk MarkDuplicates {params} -O {output} -M " + TMPDIR + "/{wildcards.sample}.metrics --VALIDATION_STRINGENCY SILENT"
+        "gatk MarkDuplicates {params.input} -O {output} -M {params.tmpdir}/{wildcards.sample}.metrics --VALIDATION_STRINGENCY SILENT --TMP_DIR {params.tmpdir}"
 
-rule indexbam:
+rule indexbam_result:
     input:
-        "{sample}.bam"
+        RESULTDIR + "/bam/" + "{sample}.bam"
     output:
-        "{sample}.bam.bai"
+        RESULTDIR + "/bam/" + "{sample}.bam.bai"
     threads: 1
     shell:
         "samtools index {input}"
+
+rule indexbam_temp:
+    input:
+        TMPDIR + "/" + "{sample}.bam"
+    output:
+        temp(TMPDIR + "/" + "{sample}.bam.bai")
+    threads: 1
+    shell:
+        "samtools index {input}"
+
+rule indexfasta:
+    input:
+        config["genome"]
+    output:
+        config["genome"] + ".fai",
+        rchop(rchop(rchop(config["genome"],".gz"),".fasta"),".fa") + ".dict"
+    threads: 1
+    shell:
+        "samtools faidx {input} && "
+        "gatk CreateSequenceDictionary -R {input}"
 
 rule BQSR:
     input:
         bam = TMPDIR + "/" + "{sample}.sort.dedup.bam",
         bai = TMPDIR + "/" + "{sample}.sort.dedup.bam.bai",
-        knownvcfs = config["knownvcfsBQSR"].split(";"),
-        genome = config["genome"]
+        genome = config["genome"],
+        fai = config["genome"] + ".fai",
+        dict = rchop(rchop(rchop(config["genome"],".gz"),".fasta"),".fa") +  ".dict"
     output:
         table = temp(TMPDIR + "/" + "{sample}.recal.table"),
-        bam = RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bam"
+        bam = RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bam",
+        bai = RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bai"
     params:
-        expand(" --known-sites {knownvcfs} ",knownvcfs = config["knownvcfsBQSR"].split(";"))
+        " ".join(expand(" --known-sites {knownvcfs} ",knownvcfs = config['knownvcfsBQSR'].split(";")))
     threads: 1
     shell:
         "gatk BaseRecalibrator -R {input.genome} -I {input.bam} {params} -O {output.table} --use-original-qualities && "
@@ -165,37 +197,55 @@ rule JointGenotyping:
         gvcf = get_gvcfs_input,
         genome = config["genome"]
     output:
-        temp(TMPDIR + "/" + "{samples}.HC.joint.raw.vcf")
+        gvcf = temp(TMPDIR + "/" + "{samples}.HC.joint.g.vcf"),
+        gvcfidx = temp(TMPDIR + "/" + "{samples}.HC.joint.g.vcf.idx"),
+        vcf = temp(RESULTDIR + "/vcf/" + "{samples}.HC.raw.vcf"),
+        vcfidx = temp(RESULTDIR + "/vcf/" + "{samples}.HC.raw.vcf.idx")
     threads: 1
     params:
-        expand("--variant " + TMPDIR + "/" + "{samples}.HC.g.vcf", samples="{samples}".split("."))
+        lambda wildcards: " ".join(expand("--variant " + TMPDIR + "/" + "{sample}.HC.g.vcf", sample=wildcards.samples.split(".")))
     shell:
-        "gatk CombineGVCFs -R {input.genome} {params} -G StandardAnnotation -G StandardHCAnnotation -G AS_StandardAnnotation -O " + TMPDIR + "/{wildcards.samples}.tmp.HC.g.vcf && "
-        "gatk GenotypeGVCFs -R {input.genome} -V " + TMPDIR + "/{wildcards.samples}.tmp.HC.g.vcf -O {output} -G StandardAnnotation -G StandardHCAnnotation -G AS_StandardAnnotation"
+        "gatk CombineGVCFs -R {input.genome} {params} -G StandardAnnotation -G StandardHCAnnotation -G AS_StandardAnnotation -O {output.gvcf} && "
+        "gatk GenotypeGVCFs -R {input.genome} -V {output.gvcf} -O {output.vcf} -G StandardAnnotation -G StandardHCAnnotation -G AS_StandardAnnotation"
 
 rule VQSR:
     input:
-        TMPDIR + "/" + "{samples}.HC.joint.raw.vcf"
+        vcf = "{sample}.HC.raw.vcf",
+        vcfidx = "{sample}.HC.raw.vcf.idx",
+        genome = config["genome"],
+        dict = rchop(rchop(rchop(config["genome"],".gz"),".fasta"),".fa") + ".dict"
     output:
-        RESULTDIR + "/vcf/" + "{samples}.HC.joint.fil.vcf"
+        tmpvcf = temp("{sample}.HC.indelrecal.vcf"),
+        tmpvcfidx = temp("{sample}.HC.indelrecal.vcf.idx"),
+        vcf = "{sample}.HC.fil.vcf",
+        idx = temp("{sample}.HC.fil.vcf.idx"),
+        tmp = temp("{sample}.tmp.sites_only.vcf"),
+        tmpidx = temp("{sample}.tmp.sites_only.vcf.idx"),
+        indelrecal = temp("{sample}.indel.recal"),
+        indelrecalidx = temp("{sample}.indel.recal.idx"),
+        indeltranche = temp("{sample}.indel.tranche"),
+        snprecal = temp("{sample}.snp.recal"),
+        snprecalidx = temp("{sample}.snp.recal.idx"),
+        snptranche = temp("{sample}.snp.tranche")
+#        RESULTDIR + "/vcf/" + "{samples}.HC.fil.vcf"
     threads: 1
     params:
-        indel = config["paramsVQSRindel"].split(";"),
-        snp = config["paramsVQSRsnp"].split(";")
+        indel = " ".join(config["paramsVQSRindel"].split(";")),
+        snp = " ".join(config["paramsVQSRsnp"].split(";"))
     shell:
-        "gatk MakeSitesOnlyVcf -I {input} -O {wildcards.samples}.tmp.sites_only.vcf && "
-        "gatk VariantRecalibrator -V {wildcards.samples}.tmp.sites_only.vcf -O {wildcards.samples}.indel.recal --tranches-file {wildcards.samples}.indel.tranche --trust-all-polymorphic "
+        "gatk MakeSitesOnlyVcf -I {input.vcf} -O {output.tmp} && "
+        "gatk VariantRecalibrator -V {output.tmp} -O {output.indelrecal} --tranches-file {output.indeltranche} --trust-all-polymorphic "
         "-tranche 100.0 -tranche 99.95 -tranche 99.9 -tranche 99.0 -tranche 97.0 -tranche 96.0 -tranche 95.0 -tranche 94.0 -tranche 93.5 -tranche 93.0 -tranche 92.0 -tranche 91.0 -tranche 90.0 "
         "-an FS -an ReadPosRankSum -an MQRankSum -an QD -an SOR -an DP "
         "-AS -mode INDEL --max-gaussians 4 {params.indel} && "
-        "gatk VariantRecalibrator -V {wildcards.samples}.tmp.sites_only.vcf -O {wildcards.samples}.snp.recal --tranches-file {wildcards.samples}.snp.tranche --trust-all-polymorphic "
+        "gatk VariantRecalibrator -V {output.tmp} -O {output.snprecal} --tranches-file {output.snptranche} --trust-all-polymorphic "
         "-tranche 100.0 -tranche 99.95 -tranche 99.9 -tranche 99.8 -tranche 99.6 -tranche 99.5 -tranche 99.4 -tranche 99.3 -tranche 99.0 -tranche 98.0 -tranche 97.0 -tranche 90.0 "
         "-an QD -an MQRankSum -an ReadPosRankSum -an FS -an MQ -an SOR -an DP "
         "-AS -mode SNP --max-gaussians 6 {params.snp} && "
-        "gatk ApplyVQSR -V {input} -O {wildcards.samples}.tmp.indel_recal.vcf --recal-file {wildcards.samples}.indel.recal --tranches-file {wildcards.samples}.indel.tranche --truth-sensitivity-filter-level 99.0 "
+        "gatk ApplyVQSR -V {input.vcf} -O {output.tmpvcf} --recal-file {output.indelrecal} --tranches-file {output.indeltranche} --truth-sensitivity-filter-level 99.0 "
         "--create-output-variant-index true -mode INDEL"
-        "gatk ApplyVQSR -V {wildcards.samples}.tmp.indel_recal.vcf -O {output} --recal-file {wildcards.samples}.snp.recal --tranches-file {wildcards.samples}.snp.tranche --truth-sensitivity-filter-level 99.7 "
-        "--create-output-variant-index true -mode SNP"
+        "gatk ApplyVQSR -V {output.tmpvcf} -O {output.vcf} --recal-file {output.snprecal} --tranches-file {output.snptranche} --truth-sensitivity-filter-level 99.7 "
+        "--create-output-variant-index true -mode SNP -AS"
 
 rule Mutect2:
     input:
@@ -203,14 +253,18 @@ rule Mutect2:
         bai =  get_bai_input, 
         genome = config["genome"]
     output:
-        raw = temp(TMPDIR + "/{samples}.MT.joint.raw.vcf"),
-        fil = RESULTDIR + "/vcf/" + "{samples}.MT.joint.fil.vcf"
+        raw = temp(TMPDIR + "/{samples}.MT.raw.vcf"),
+        fil = RESULTDIR + "/vcf/" + "{samples}.MT.fil.vcf",
+        rawidx = temp(TMPDIR + "/vcf/" + "{samples}.MT.raw.vcf.idx"),
+        filidx = temp(RESULTDIR + "/vcf/" + "{samples}.MT.fil.vcf.idx"),
+        filstat = temp(RESULTDIR + "/vcf/" + "{samples}.MT.fil.vcf.filteringStats.tsv"),
+        rawstat = temp(TMPDIR + "/vcf/" + "{samples}.MT.raw.vcf.stats"),
     params:
-        expand("-I" + RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bam", sample="{samples}".split("."))
-    threads: 1
+        lambda wildcards: " ".join(expand("-I" + RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bam", sample=wildcards.samples.split(".")))
+    threads: 8
     shell:
-        "gatk Mutect2 -R {input.genome} {params} -O " + TMPDIR + "/{wildcards.samples}.MT.joint.raw.vcf && "
-        "gatk FilterMutectCalls -V " + TMPDIR + "/{wildcards.samples}.MT.joint.raw.vcf -R {input.genome} -O {output}"
+        "gatk Mutect2 -R {input.genome} {params} -O {output.raw} && "
+        "gatk FilterMutectCalls -V {output.raw} -R {input.genome} -O {output.fil}"
 
 rule Lofreq:
     input:
@@ -220,8 +274,10 @@ rule Lofreq:
     output:
         RESULTDIR + "/vcf/" + "{sample}.LF.fil.vcf"
     threads: 8
+    params:
+        " ".join(expand(" -S {knownvcfs} ",knownvcfs = config['knownvcfsBQSR'].split(";")))
     shell:
-        "lofreq call-parallel --pp-threads {threads} -f {input.genome} -o {output} -s $cat_command {input.bam}"
+        "lofreq call-parallel --pp-threads {threads} -f {input.genome} -o {output} -s {params} {input.bam}"
 
 rule Scalpel:
     input:
@@ -229,22 +285,25 @@ rule Scalpel:
         bai = RESULTDIR + "/bam/" + "{sample}.sort.dedup.recal.bam.bai",
         genome = config["genome"]
     output:
-        temp(TMPDIR + "/" + "{sample}.SC.{chr}.fil.vcf")
+        vcf = temp(TMPDIR + "/" + "{sample}.SC.{chr}.fil.vcf"),
+        dir = temp(directory(TMPDIR + "/" + "{sample}.{chr}"))
     params:
-        get_chr_len
+        chrlen = get_chr_len,
+        window = 1000
     threads: 8
     shell:
-        "scalpel-discovery --single --bam {input.bam} --ref {input.genome} --bed {wildcards.chr}:1-{params} --window 1000 --numprocs {threads} --dir " + TMPDIR + "/{wildcards.sample}.{wildcards.chr} && "
-        "scalpel-export --single --db " + TMPDIR + "/{wildcards.sample}.{wildcards.chr}/variants.db --bed {wildcards.chr}:1-{params} --ref {input.genome} > {output}"
+        "scalpel-discovery --single --bam {input.bam} --ref {input.genome} --bed {wildcards.chr}:1-{params.chrlen} --window {params.window} --numprocs {threads} --dir {output.dir} && "
+        "scalpel-export --single --db {output.dir}/variants.db --bed {wildcards.chr}:1-{params.chrlen} --ref {input.genome} > {output.vcf}"
 
 
 rule Bgzip:
     input:
         "{sample}.vcf"
     output:
-        "{sample}.vcf.gz"
+        gz = temp("{sample}.vcf.gz"),
+        tbi = temp("{sample}.vcf.gz.tbi")
     shell:
-        "bgzip {input} && tabix {output}"
+        "bgzip {input} && tabix {output.gz}"
 
 rule MergeVcfs:
     input:
