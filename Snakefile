@@ -120,7 +120,7 @@ rule sortbam:
     params:
         TMPDIR
     shell:
-        "gatk SortSam -I {input} -O {output} -SO coordinate --VALIDATION_STRINGENCY SILENT --TMPDIR {params}"
+        "gatk SortSam -I {input} -O {output} -SO coordinate --VALIDATION_STRINGENCY SILENT --TMP_DIR {params}"
 
 rule markduplicate:
     input:
