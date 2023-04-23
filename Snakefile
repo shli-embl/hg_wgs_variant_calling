@@ -179,7 +179,7 @@ rule BQSR:
     threads: 1
     shell:
         "gatk BaseRecalibrator -R {input.genome} -I {input.bam} {params} -O {output.table} --use-original-qualities && "
-        "gatk ApplyBQSR --create-output-bam-md5 --add-output-sam-program-record -R {input.genome} -I {input.bam} -O {output.bam} -bqsr {output.table} --static-quantized-quals 10 --static-quantized-quals 20 --static-quantized-qual 30"
+        "gatk ApplyBQSR --create-output-bam-md5 --add-output-sam-program-record -R {input.genome} -I {input.bam} -O {output.bam} -bqsr {output.table} --static-quantized-quals 10 --static-quantized-quals 20 --static-quantized-quals 30"
 
 rule HaplotypeCaller:
     input:
